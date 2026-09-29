@@ -1,0 +1,11 @@
+# 强制 LF：GitHub Actions 的 run: 块若带 CRLF，Linux runner 上 bash 会报错
+* text=auto eol=lf
+
+# Windows 批处理必须保留 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 二进制
+*.png binary
+*.jpg binary
+*.pdf binary

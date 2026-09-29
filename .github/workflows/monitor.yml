@@ -1,0 +1,138 @@
+name: 监控探活
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  PROBE_URL: https://linklite.2956446350.workers.dev/health
+  SERVICE: linklite
+
+jobs:
+  probe:
+    name: 探活
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 健康探测（连续 3 次失败才判定宕机）
+        id: probe
+        run: |
+          ok=0
+          for i in 1 2 3; do
+            if out=$(curl -fsS -m 15 "$PROBE_URL"); then
+              ok=1
+              echo "detail=$out" >> "$GITHUB_OUTPUT"
+              break
+            fi
+            echo "第 $i 次探测失败，等待 10s 重试"
+            sleep 10
+          done
+          if [ "$ok" -eq 1 ]; then
+            echo "status=ok" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=down" >> "$GITHUB_OUTPUT"
+            echo "::warning::探测失败: $PROBE_URL"
+          fi
+
+      - name: 查询既有事故单
+        id: incident
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const open = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              labels: ["incident"],
+              per_page: 1,
+            });
+            const issue = open.data[0] || null;
+            core.setOutput("has_open", issue ? "true" : "false");
+            core.setOutput("number", issue ? String(issue.number) : "");
+
+      - name: 故障 → 开事故单
+        if: steps.probe.outputs.status == 'down' && steps.incident.outputs.has_open == 'false'
+        id: open_incident
+        uses: actions/github-script@v7
+        env:
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          script: |
+            const created = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 linklite 服务不可用 — ${new Date().toISOString()}`,
+              labels: ["incident"],
+              body: [
+                "由 **监控探活** workflow 自动创建。",
+                "",
+                "- 服务: `linklite`",
+                "- 探测地址: `" + process.env.PROBE_URL + "`",
+                "- 触发时间: " + new Date().toISOString(),
+                "- 运行记录: " + process.env.RUN_URL,
+                "",
+                "恢复后本单会自动关闭并发送恢复通知。",
+              ].join("\n"),
+            });
+            core.setOutput("number", String(created.data.number));
+            console.log("created issue #" + created.data.number);
+
+      - name: 故障 → 通知飞书
+        if: steps.probe.outputs.status == 'down' && steps.incident.outputs.has_open == 'false'
+        env:
+          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+          FEISHU_SECRET: ${{ secrets.FEISHU_SECRET }}
+          FEISHU_TEXT: |
+            🚨 linklite 服务不可用
+            探测地址: ${{ env.PROBE_URL }}
+            触发时间: ${{ github.event.repository.updated_at }}
+            事故单: #${{ steps.open_incident.outputs.number }}
+            运行记录: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: node .github/scripts/notify-feishu.mjs
+
+      - name: 持续故障 → 保持静默（不重复轰炸）
+        if: steps.probe.outputs.status == 'down' && steps.incident.outputs.has_open == 'true'
+        run: echo "已有开放事故单 #${{ steps.incident.outputs.number }}，跳过通知"
+
+      - name: 恢复 → 关事故单
+        if: steps.probe.outputs.status == 'ok' && steps.incident.outputs.has_open == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const n = Number("${{ steps.incident.outputs.number }}");
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: n,
+              body: "✅ 服务已恢复（探测通过）。本单自动关闭。",
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: n,
+              state: "closed",
+              state_reason: "completed",
+            });
+
+      - name: 恢复 → 通知飞书
+        if: steps.probe.outputs.status == 'ok' && steps.incident.outputs.has_open == 'true'
+        env:
+          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
+          FEISHU_SECRET: ${{ secrets.FEISHU_SECRET }}
+          FEISHU_TEXT: |
+            ✅ linklite 服务已恢复
+            时间: ${{ github.event.repository.updated_at }}
+            事故单: #${{ steps.incident.outputs.number }} 已关闭
+        run: node .github/scripts/notify-feishu.mjs

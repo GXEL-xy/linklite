@@ -1,0 +1,33 @@
+# ============================================================
+# LinkLite — Cloudflare Worker 配置
+# 文档: https://developers.cloudflare.com/workers/wrangler/configuration/
+# ============================================================
+
+name = "linklite"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+
+# 启用 Workers 日志/指标 (迭代 3 的可观测性依赖它)
+[observability]
+enabled = true
+head_sampling_rate = 1.0
+
+# ---------- D1 (关系型数据库, 存短链映射) ----------
+[[d1_databases]]
+binding = "DB"
+database_name = "linklite-db"
+database_id = "2c05c270-0a7b-4060-ab67-a9dca3a66fdf"
+
+# ---------- KV (边缘缓存, 热链接毫秒级跳转) ----------
+[[kv_namespaces]]
+binding = "LINKS"
+id = "c914bce1892943e5b491b12dbe5d8509"
+
+# ---------- 预览环境 (wrangler dev 用) ----------
+[env.preview]
+name = "linklite-preview"
+
+# ---------- 自定义域名 (迭代后续接入, 需先有域名) ----------
+# [[routes]]
+# pattern = "go.example.com/*"
+# zone_name = "example.com"

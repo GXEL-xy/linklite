@@ -1,0 +1,27 @@
+{
+  "name": "linklite",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "基于 Cloudflare Workers + D1 + KV 的短链服务 —— 运维能力练习项目",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/smoke.mjs",
+    "test:prod": "node scripts/smoke.mjs https://linklite.2956446350.workers.dev",
+    "db:create": "wrangler d1 create linklite-db",
+    "kv:create": "wrangler kv namespace create LINKS",
+    "db:schema": "wrangler d1 execute linklite-db --remote --file=schema.sql",
+    "db:schema:local": "wrangler d1 execute linklite-db --local --file=schema.sql",
+    "db:list": "wrangler d1 execute linklite-db --remote --command \"SELECT code, url, click_count, created_at FROM links ORDER BY created_at DESC LIMIT 20\""
+  },
+  "dependencies": {
+    "hono": "^4"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5",
+    "typescript": "^5",
+    "wrangler": "^4"
+  }
+}
