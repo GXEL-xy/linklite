@@ -93,7 +93,7 @@ push ──► GitHub Actions CI
                     npm ci && typecheck → wrangler deploy
 
 每 5 分钟 ──► 监控探活 workflow
-              ├ 连续 3 次失败 → 开 GitHub 事故单 + 钉钉群通知
+              ├ 连续 3 次失败 → 开 GitHub 事故单 + SMTP 邮件通知
               ├ 持续故障 → 保持静默（不重复轰炸）
               └ 恢复 → 自动关单 + 发恢复通知
 ```
@@ -104,7 +104,7 @@ push ──► GitHub Actions CI
 | 集成测试 | `scripts/smoke.mjs`（14 用例 / 22 断言，起**真实** `wrangler dev` 跑） | 每次 push / PR |
 | 部署 | Workers Builds，类型不过就不部署 | push 到 `main` |
 | 探活 | curl `/health`，连续 3 次失败才判定宕机 | 每 5 分钟 |
-| 告警 | GitHub 事故单生命周期 + 钉钉群机器人（支持加签） | 故障 / 恢复 |
+| 告警 | GitHub 事故单生命周期 + SMTP 邮件直发（QQ/163/Gmail 通用） | 故障 / 恢复 |
 
 本地复现同一条测试链：
 
