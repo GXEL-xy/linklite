@@ -114,6 +114,19 @@ npm run dev &
 node scripts/smoke.mjs http://127.0.0.1:8787
 ```
 
+### 已交付证据
+
+| 环节 | 证据 | 状态 |
+|---|---|:---:|
+| CI | GitHub Actions 连续多次 `success`（最新 `43488d3`） | ✅ |
+| CD | push `43488d3` → Workers Builds `9ffdeef4` → **`outcome: success`**（27s，`source: push_event`） | ✅ |
+| 部署产物 | Worker **Version 2**，`source: wrangler`，`triggered_by: version_upload` | ✅ |
+| 端到端 | `/health` 200 `db:up` · `/` 200 · `/ej6nc9` 302 → 正确跳转 | ✅ |
+| 告警发信 | `notify-smtp.mjs` 本地真实发信成功（QQ SMTP 认证 + 投递） | ✅ |
+| 告警演练 | 连续失败 → 事故单 → 邮件 → 恢复关单 | ⬜ 待故障注入 |
+
+> **踩坑记录**：GitHub Actions Secrets 要求**客户端 libsodium 加密**（`encrypted_value` + `key_id`），明文 `value` 会被 422 拒掉，用 `gh secret set` 处理。
+
 ---
 
 ## 迭代路线图
@@ -123,9 +136,9 @@ node scripts/smoke.mjs http://127.0.0.1:8787
 | 迭代 | 功能 | 运维能力 | 状态 |
 |:---:|---|---|:---:|
 | **0** | 短链生成 / 跳转 / KV 缓存 | 打通本地开发 → 部署上线 | ✅ 完成 |
-| **1** | 热链接缓存优化 | **CI/CD**：PR 审批 + 自动测试部署 | ⬜ |
+| **1** | 热链接缓存优化 | **CI/CD**：PR 审批 + 自动测试部署 | 🟡 CI/CD 已交付 |
 | **2** | 点击统计面板 | **可观测性**：Analytics 指标 + Dashboard | ⬜ |
-| **3** | 健康检查 / SLO | **告警**：可用性阈值 → webhook 通知 | ⬜ |
+| **3** | 健康检查 / SLO | **告警**：可用性阈值 → webhook 通知 | 🟡 已上线，待故障演练 |
 | **4** | 防滥用（限流 / Turnstile） | **安全**：WAF 规则 + 自动封禁 | ⬜ |
 | **5** | 基础设施重构 | **IaC**：Terraform 接管 DNS / WAF / 缓存 | ⬜ |
 | **6** | 新特性（导出 / 多语言） | **发布工程**：灰度发布 + 自动回滚 | ⬜ |
