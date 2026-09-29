@@ -23,8 +23,9 @@ const {
   ALERT_SUBJECT = "[LinkLite] 服务告警",
 } = process.env;
 const text = process.env.ALERT_TEXT;
+const to = ALERT_TO || SMTP_USER; // 未配置收件人时发给发件人自己
 
-if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS || !ALERT_TO) {
+if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
   console.log("[smtp] 未配置 SMTP Secrets，跳过通知");
   process.exit(0);
 }
@@ -49,7 +50,7 @@ const transport = nodemailer.createTransport({
 try {
   const info = await transport.sendMail({
     from: ALERT_FROM || SMTP_USER,
-    to: ALERT_TO,
+    to,
     subject: ALERT_SUBJECT,
     text,
   });

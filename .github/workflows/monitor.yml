@@ -12,6 +12,9 @@ permissions:
 env:
   PROBE_URL: https://linklite.2956446350.workers.dev/health
   SERVICE: linklite
+  # SMTP 非敏感配置（凭据走 Secrets）
+  SMTP_HOST: smtp.qq.com
+  SMTP_PORT: "465"
 
 jobs:
   probe:
@@ -96,8 +99,6 @@ jobs:
       - name: 故障 → 邮件告警
         if: steps.probe.outputs.status == 'down' && steps.incident.outputs.has_open == 'false'
         env:
-          SMTP_HOST: ${{ secrets.SMTP_HOST }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           ALERT_TO: ${{ secrets.ALERT_TO }}
@@ -138,8 +139,6 @@ jobs:
       - name: 恢复 → 邮件告警
         if: steps.probe.outputs.status == 'ok' && steps.incident.outputs.has_open == 'true'
         env:
-          SMTP_HOST: ${{ secrets.SMTP_HOST }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           ALERT_TO: ${{ secrets.ALERT_TO }}
