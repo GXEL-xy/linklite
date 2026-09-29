@@ -89,18 +89,19 @@ jobs:
             core.setOutput("number", String(created.data.number));
             console.log("created issue #" + created.data.number);
 
-      - name: 故障 → 通知飞书
+      - name: 故障 → 通知钉钉
         if: steps.probe.outputs.status == 'down' && steps.incident.outputs.has_open == 'false'
         env:
-          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
-          FEISHU_SECRET: ${{ secrets.FEISHU_SECRET }}
-          FEISHU_TEXT: |
-            🚨 linklite 服务不可用
-            探测地址: ${{ env.PROBE_URL }}
-            触发时间: ${{ github.event.repository.updated_at }}
-            事故单: #${{ steps.open_incident.outputs.number }}
-            运行记录: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: node .github/scripts/notify-feishu.mjs
+          DINGTALK_WEBHOOK: ${{ secrets.DINGTALK_WEBHOOK }}
+          DINGTALK_SECRET: ${{ secrets.DINGTALK_SECRET }}
+        run: |
+          NOW=$(date -u +%FT%TZ)
+          export NOTIFY_TEXT="🚨 linklite 服务不可用
+          探测地址: ${{ env.PROBE_URL }}
+          触发时间: $NOW
+          事故单: #${{ steps.open_incident.outputs.number }}
+          运行记录: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          node .github/scripts/notify-dingtalk.mjs
 
       - name: 持续故障 → 保持静默（不重复轰炸）
         if: steps.probe.outputs.status == 'down' && steps.incident.outputs.has_open == 'true'
@@ -126,13 +127,14 @@ jobs:
               state_reason: "completed",
             });
 
-      - name: 恢复 → 通知飞书
+      - name: 恢复 → 通知钉钉
         if: steps.probe.outputs.status == 'ok' && steps.incident.outputs.has_open == 'true'
         env:
-          FEISHU_WEBHOOK: ${{ secrets.FEISHU_WEBHOOK }}
-          FEISHU_SECRET: ${{ secrets.FEISHU_SECRET }}
-          FEISHU_TEXT: |
-            ✅ linklite 服务已恢复
-            时间: ${{ github.event.repository.updated_at }}
-            事故单: #${{ steps.incident.outputs.number }} 已关闭
-        run: node .github/scripts/notify-feishu.mjs
+          DINGTALK_WEBHOOK: ${{ secrets.DINGTALK_WEBHOOK }}
+          DINGTALK_SECRET: ${{ secrets.DINGTALK_SECRET }}
+        run: |
+          NOW=$(date -u +%FT%TZ)
+          export NOTIFY_TEXT="✅ linklite 服务已恢复
+          时间: $NOW
+          事故单: #${{ steps.incident.outputs.number }} 已关闭"
+          node .github/scripts/notify-dingtalk.mjs

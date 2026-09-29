@@ -83,6 +83,39 @@ npm run deploy       # 部署
 
 ---
 
+## 交付流水线
+
+```
+push ──► GitHub Actions CI
+          typecheck → 本地 D1 建表 → 起 wrangler dev → 14 用例冒烟测试
+                 │
+                 └► Workers Builds (Cloudflare 原生)   push 到 main 时
+                    npm ci && typecheck → wrangler deploy
+
+每 5 分钟 ──► 监控探活 workflow
+              ├ 连续 3 次失败 → 开 GitHub 事故单 + 钉钉群通知
+              ├ 持续故障 → 保持静默（不重复轰炸）
+              └ 恢复 → 自动关单 + 发恢复通知
+```
+
+| 环节 | 实现 | 触发 |
+|---|---|---|
+| 类型检查 | `tsc --noEmit` | 每次 push / PR |
+| 集成测试 | `scripts/smoke.mjs`（14 用例 / 22 断言，起**真实** `wrangler dev` 跑） | 每次 push / PR |
+| 部署 | Workers Builds，类型不过就不部署 | push 到 `main` |
+| 探活 | curl `/health`，连续 3 次失败才判定宕机 | 每 5 分钟 |
+| 告警 | GitHub 事故单生命周期 + 钉钉群机器人（支持加签） | 故障 / 恢复 |
+
+本地复现同一条测试链：
+
+```bash
+npm run typecheck && npm run db:schema:local
+npm run dev &
+node scripts/smoke.mjs http://127.0.0.1:8787
+```
+
+---
+
 ## 迭代路线图
 
 每一轮迭代 = **一个功能** + **一项运维能力** + **一份可展示证据**。
