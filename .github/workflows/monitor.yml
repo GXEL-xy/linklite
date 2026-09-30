@@ -10,7 +10,7 @@ permissions:
   issues: write
 
 env:
-  PROBE_URL: https://linklite-fault-drill-9f3b2a.2956446350.workers.dev/health
+  PROBE_URL: https://linklite.2956446350.workers.dev/health
   SERVICE: linklite
   # SMTP 非敏感配置（凭据走 Secrets）
   SMTP_HOST: smtp.qq.com
